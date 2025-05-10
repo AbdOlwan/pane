@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown Editor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+  <style>
+    :root {
+      --primary-color: #3498db;
+      --border-color: #e0e0e0;
+      --bg-color: #f9f9f9;
+      --dark-bg: #f0f0f0;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    header {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+    }
+    
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    
+    .editor-pane, .preview-pane {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      position: relative;
+    }
+    
+    .editor-pane {
+      background-color: white;
+      border-right: 1px solid var(--border-color);
+    }
+    
+    .preview-pane {
+      background-color: var(--bg-color);
+    }
+    
+    .editor-pane h2, .preview-pane h2 {
+      margin-bottom: 0.5rem;
+      color: #555;
+      font-size: 1.2rem;
+      font-weight: 500;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    #editor {
+      width: 100%;
+      height: calc(100% - 2.5rem);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 1rem;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      resize: none;
+      outline: none;
+    }
+    
+    #preview {
+      height: calc(100% - 2.5rem);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 1rem;
+      background-color: white;
+      overflow-y: auto;
+    }
+    
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    button:hover {
+      background-color: #2980b9;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    /* Markdown styling for preview */
+    #preview h1 {
+      font-size: 2rem;
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.3rem;
+      border-bottom: 1px solid #eaecef;
+    }
+    
+    #preview h2 {
+      font-size: 1.5rem;
+      margin-top: 1.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.3rem;
+      border-bottom: 1px solid #eaecef;
+    }
+    
+    #preview h3 {
+      font-size: 1.25rem;
+      margin-top: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    #preview h4 {
+      font-size: 1rem;
+      margin-top: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    #preview p {
+      margin-bottom: 1rem;
+    }
+    
+    #preview a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+    
+    #preview a:hover {
+      text-decoration: underline;
+    }
+    
+    #preview ul, #preview ol {
+      margin-bottom: 1rem;
+      padding-left: 2rem;
+    }
+    
+    #preview li {
+      margin-bottom: 0.5rem;
+    }
+    
+    #preview blockquote {
+      padding: 0 1rem;
+      color: #6a737d;
+      border-left: 0.25rem solid #dfe2e5;
+      margin-bottom: 1rem;
+    }
+    
+    #preview pre {
+      background-color: #f6f8fa;
+      border-radius: 3px;
+      padding: 1rem;
+      overflow: auto;
+      margin-bottom: 1rem;
+    }
+    
+    #preview code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+      background-color: rgba(27, 31, 35, 0.05);
+      border-radius: 3px;
+      padding: 0.2em 0.4em;
+      font-size: 85%;
+    }
+    
+    #preview pre code {
+      background-color: transparent;
+      padding: 0;
+      font-size: 100%;
+    }
+    
+    #preview img {
+      max-width: 100%;
+      margin-bottom: 1rem;
+    }
+    
+    #preview table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+    
+    #preview table th, #preview table td {
+      padding: 0.5rem;
+      border: 1px solid #dfe2e5;
+    }
+    
+    #preview table th {
+      background-color: #f6f8fa;
+      font-weight: 600;
+    }
+    
+    #preview hr {
+      height: 0.25rem;
+      padding: 0;
+      margin: 1.5rem 0;
+      background-color: #e1e4e8;
+      border: 0;
+    }
+    
+    .notifications {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+    
+    .notification {
+      background-color: #2ecc71;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      opacity: 0;
+      transform: translateY(20px);
+      animation: slideIn 0.3s forwards, fadeOut 0.5s 2s forwards;
+    }
+    
+    @keyframes slideIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes fadeOut {
+      to {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+    }
+
+    /* Hide preview content in print mode */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #preview, #preview * {
+        visibility: visible;
+      }
+      #preview {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        padding: 2cm;
+        border: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Markdown Editor</h1>
+  </header>
+  
+  <div class="container">
+    <div class="editor-pane">
+      <h2>Markdown</h2>
+      <textarea id="editor" spellcheck="false" placeholder="Write your markdown here..."></textarea>
+    </div>
+    
+    <div class="preview-pane">
+      <h2>
+        Preview
+        <div class="button-group">
+          <button id="copyBtn">Copy</button>
+          <button id="exportBtn">Export PDF</button>
+        </div>
+      </h2>
+      <div id="preview"></div>
+    </div>
+  </div>
+  
+  <div class="notifications" id="notifications"></div>
+  
+  <script>
+    // Initialize marked with options
+    marked.setOptions({
+      highlight: function(code, lang) {
+        const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+        return hljs.highlight(code, { language }).value;
+      },
+      langPrefix: 'hljs language-',
+      gfm: true,
+      breaks: true,
+      pedantic: false,
+      sanitize: false,
+      smartLists: true,
+      smartypants: true
+    });
+    
+    // DOM elements
+    const editor = document.getElementById('editor');
+    const preview = document.getElementById('preview');
+    const copyBtn = document.getElementById('copyBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const notifications = document.getElementById('notifications');
+    
+    // Default markdown content
+    const defaultMarkdown = `# Welcome to Markdown Editor
+
+## Features
+- Real-time markdown preview
+- Export to PDF
+- Copy to clipboard
+
+## Basic Markdown Guide
+
+### Headings
+# Heading 1
+## Heading 2
+### Heading 3
+
+### Text Formatting
+**Bold text** or __Bold text__
+*Italic text* or _Italic text_
+~~Strikethrough~~
+
+### Lists
+#### Unordered List
+- Item 1
+- Item 2
+  - Nested item
+
+#### Ordered List
+1. First item
+2. Second item
+   1. Nested item
+
+### Links and Images
+[Link text](https://example.com)
+![Alt text](/api/placeholder/400/200)
+
+### Code
+Inline \`code\`
+
+\`\`\`javascript
+// Code block
+function greet() {
+  console.log("Hello, world!");
+}
+\`\`\`
+
+### Blockquotes
+> This is a blockquote
+> > Nested blockquote
+
+### Tables
+| Header 1 | Header 2 |
+|----------|----------|
+| Cell 1   | Cell 2   |
+| Cell 3   | Cell 4   |
+
+### Horizontal Rule
+---
+
+Start editing on the left and see the preview on the right!
+`;
+
+    // Set initial content
+    editor.value = defaultMarkdown;
+    updatePreview();
+    
+    // Event listeners
+    editor.addEventListener('input', updatePreview);
+    copyBtn.addEventListener('click', copyContent);
+    exportBtn.addEventListener('click', exportToPDF);
+    
+    // Update preview on input
+    function updatePreview() {
+      preview.innerHTML = marked.parse(editor.value);
+      // Apply syntax highlighting to code blocks
+      document.querySelectorAll('pre code').forEach((block) => {
+        hljs.highlightElement(block);
+      });
+    }
+    
+    // Copy rendered HTML to clipboard
+    function copyContent() {
+      // Create a temporary element to hold the content
+      const tempElement = document.createElement('div');
+      tempElement.innerHTML = preview.innerHTML;
+      
+      // Remove highlight.js styling for code blocks for cleaner copy
+      tempElement.querySelectorAll('pre code').forEach(block => {
+        block.className = '';
+      });
+      
+      // Copy HTML content to clipboard
+      navigator.clipboard.writeText(tempElement.innerHTML)
+        .then(() => showNotification('Content copied to clipboard!'))
+        .catch(err => console.error('Failed to copy: ', err));
+    }
+    
+    // Export to PDF
+    function exportToPDF() {
+      const element = preview;
+      const opt = {
+        margin: [0.5, 0.5, 0.5, 0.5],
+        filename: 'markdown-export.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      
+      showNotification('Generating PDF...');
+      
+      html2pdf().set(opt).from(element).save()
+        .then(() => showNotification('PDF exported successfully!'))
+        .catch(err => console.error('Failed to export PDF: ', err));
+    }
+    
+    // Show notification
+    function showNotification(message) {
+      const notification = document.createElement('div');
+      notification.className = 'notification';
+      notification.textContent = message;
+      notifications.appendChild(notification);
+      
+      // Remove notification after animation completes
+      setTimeout(() => {
+        notification.remove();
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
